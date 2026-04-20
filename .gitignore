@@ -1,0 +1,27 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/
+logs/
+*.sqlite
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/gradle/wrapper/gradle-wrapper.jar
+android/gradlew
+android/gradlew.bat
+*.iml
+

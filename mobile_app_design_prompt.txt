@@ -1,0 +1,109 @@
+You are a senior product designer + mobile architect. Design an Android app
+for monitoring and controlling a crypto futures trading bot. Output:
+complete design spec — NOT implementation code.
+
+## Context: The Trading Bot (Backend, Already Built)
+- Python CLI bot running 24/7 on a VPS
+- Trades Bybit USDT Perpetual futures
+- Brain: Claude Opus 4.7 via `gh copilot` subprocess — makes trade decisions
+- Cycle: every 300s → screen top-50 symbols by volume → filter (liquidity,
+  spread, volatility, funding) → compute indicators (RSI, MACD, EMA, ATR,
+  Bollinger) → aggregate news (RSS, NewsAPI, CryptoPanic, Twitter) → ask
+  Claude brain → execute orders with SL/TP
+- Risk guards: max risk/trade %, max concurrent positions, max leverage,
+  daily loss halt %, drawdown kill switch %, funding rate gate, SL cooldown
+- Modes: paper | live. Testnet or mainnet.
+- Storage: SQLite (signals, trades, news cache, equity curve)
+- Existing notif: Telegram bot
+
+## Your Task
+Design an Android app that gives the user full visibility + control over
+the bot remotely. Target user: solo crypto trader, technical but not a
+developer, wants to check positions on the go + slam emergency stop from
+phone. Android only — no iOS.
+
+## Deliverables (provide all of these)
+
+### 1. Architecture
+- Framework recommendation (native Kotlin + Jetpack Compose vs Flutter vs
+  React Native) with rationale — pick ONE
+- Backend API layer needed on the VPS (REST + WebSocket endpoints) — list
+  every endpoint with method, path, payload, purpose
+- Auth strategy (API key? JWT? biometric unlock via BiometricPrompt?)
+- Push notification delivery (FCM — how it integrates with bot events)
+- Offline behavior: what's cached (Room DB?), what fails gracefully
+- Background work: WorkManager for polling vs pure push-driven
+
+### 2. Screen-by-Screen UX
+For each screen: purpose, key data shown, actions available, wireframe
+description (ASCII or structured layout). Minimum screens:
+- Login / Pairing (how user connects app to their VPS bot securely — QR
+  code pairing? manual host+token?)
+- Dashboard (equity, today P&L, open positions count, bot status LED,
+  mode indicator paper/live, kill switch button prominent)
+- Positions (list of open positions: symbol, side, size, entry, mark,
+  unrealized P&L, SL, TP, duration — swipe to close)
+- Trade History (filterable by symbol/date/result, with per-trade detail
+  showing Claude's reasoning JSON)
+- Signals Feed (live stream of what bot is seeing: screened symbols,
+  indicator values, brain decisions w/ confidence)
+- News Feed (aggregated news the bot ingested, sentiment tags)
+- Risk & Settings (live-editable risk caps, mode toggle paper↔live with
+  confirmation, leverage cap, universe size, cycle interval)
+- Bot Control (start/stop/pause, force cycle now, flatten all positions
+  emergency button w/ double confirm)
+- Logs (tail last N log lines, filter by level)
+- Alerts/Notifications center
+
+### 3. Design System
+- Material 3 / Material You — dynamic color adoption strategy
+- Color palette (dark mode first — traders work at night; accent colors
+  for long/short/profit/loss)
+- Typography scale (Roboto or custom)
+- Critical UI patterns: P&L coloring, position card anatomy, confirmation
+  dialogs for destructive actions, "live" indicators (pulsing dot for
+  WebSocket connected)
+
+### 4. Safety & UX Guardrails
+- Double-confirm for: switching paper→live, changing leverage up,
+  flatten-all, raising risk caps
+- Biometric lock on app open (BiometricPrompt / fingerprint / face)
+- "Read-only mode" toggle so user can show app without accidentally
+  hitting buttons
+- Clear visual differentiation paper vs live (e.g. red border + "LIVE"
+  badge everywhere in live mode)
+- Session timeout policy
+- Android back-press behavior for destructive flows
+
+### 5. Push Notifications (FCM)
+List every event type that triggers a push, with example copy + Android
+notification channel:
+- Trade opened / closed
+- SL / TP hit
+- Kill switch / daily loss halt triggered
+- Bot crashed / API disconnected
+- High-confidence signal awaiting manual approval (if semi-auto mode added)
+- Specify channel importance levels (HIGH for kill-switch, DEFAULT for
+  trade events, LOW for news)
+
+### 6. Roadmap
+- MVP scope (what ships first — read-only monitoring is fine as v1)
+- v2 additions (control actions)
+- v3 / nice-to-haves (charts, backtesting viewer, multi-account,
+  home-screen widget showing P&L)
+
+### 7. Risks & Open Questions
+Call out anything ambiguous, security concerns (API key storage via
+Android Keystore, VPS exposure, certificate pinning), Play Store policy
+considerations (financial app rules), and questions you'd ask the product
+owner before building.
+
+## Style
+- Be opinionated — pick one recommendation per decision, don't give me
+  a menu of options
+- Prioritize safety: this app can lose real money if mis-designed
+- Mobile-first, thumb-reachable destructive actions should be hard to
+  hit accidentally
+- Assume the user might open the app in a panic during a market crash —
+  the kill switch must be reachable in ≤2 taps from app open
+- Follow Android Material 3 guidelines, not generic mobile patterns
