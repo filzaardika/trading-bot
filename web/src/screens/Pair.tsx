@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Link as LinkIcon, Key, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Link as LinkIcon, Key, Loader2, AlertCircle, Eye, EyeOff, ClipboardPaste } from "lucide-react";
 import { Button, Card } from "../components/ui";
 import { pair, ping, ApiError } from "../api";
 import { saveSession } from "../auth";
@@ -7,6 +7,7 @@ import { saveSession } from "../auth";
 export function PairScreen({ onPaired }: { onPaired: () => void }) {
   const [baseUrl, setBaseUrl] = useState("https://bot.opclaw.my.id");
   const [token, setToken] = useState("");
+  const [showToken, setShowToken] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -26,6 +27,24 @@ export function PairScreen({ onPaired }: { onPaired: () => void }) {
       setErr(msg);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function pasteToken() {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t) setToken(t.trim());
+    } catch {
+      setErr("Clipboard blocked. Long-press the field and tap Paste.");
+    }
+  }
+
+  async function pasteUrl() {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t) setBaseUrl(t.trim());
+    } catch {
+      /* ignore */
     }
   }
 
@@ -52,6 +71,11 @@ export function PairScreen({ onPaired }: { onPaired: () => void }) {
               onChange={setBaseUrl}
               autoComplete="url"
               inputMode="url"
+              trailing={
+                <IconBtn label="Paste" onClick={pasteUrl}>
+                  <ClipboardPaste size={14} />
+                </IconBtn>
+              }
             />
             <Field
               icon={<Key size={16} />}
@@ -59,7 +83,18 @@ export function PairScreen({ onPaired }: { onPaired: () => void }) {
               placeholder="Paste bearer token"
               value={token}
               onChange={setToken}
-              type="password"
+              type={showToken ? "text" : "password"}
+              autoComplete="off"
+              trailing={
+                <div className="flex items-center gap-1">
+                  <IconBtn label="Paste" onClick={pasteToken}>
+                    <ClipboardPaste size={14} />
+                  </IconBtn>
+                  <IconBtn label={showToken ? "Hide" : "Show"} onClick={() => setShowToken((v) => !v)}>
+                    {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </IconBtn>
+                </div>
+              }
             />
             {err && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-accent-red/10 border border-accent-red/30 text-accent-red text-xs">
@@ -82,6 +117,19 @@ export function PairScreen({ onPaired }: { onPaired: () => void }) {
   );
 }
 
+function IconBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="shrink-0 px-2 py-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-surfaceAlt transition-colors"
+    >
+      {children}
+    </button>
+  );
+}
+
 function Field({
   icon,
   label,
@@ -91,6 +139,7 @@ function Field({
   type = "text",
   autoComplete,
   inputMode,
+  trailing,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -100,11 +149,12 @@ function Field({
   type?: string;
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  trailing?: React.ReactNode;
 }) {
   return (
     <label className="block">
       <div className="text-xs font-semibold text-text-secondary mb-1.5 ml-1">{label}</div>
-      <div className="flex items-center gap-2 px-3 py-3 rounded-xl bg-bg-elev border border-border-default focus-within:border-accent-indigo transition-colors">
+      <div className="flex items-center gap-2 pl-3 pr-1 py-1.5 rounded-xl bg-bg-elev border border-border-default focus-within:border-accent-indigo transition-colors">
         <span className="text-text-muted">{icon}</span>
         <input
           value={value}
@@ -114,9 +164,12 @@ function Field({
           autoComplete={autoComplete}
           inputMode={inputMode}
           autoCapitalize="none"
+          autoCorrect="off"
           spellCheck={false}
-          className="flex-1 bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted"
+          className="flex-1 min-w-0 bg-transparent outline-none text-sm text-text-primary placeholder:text-text-muted py-1.5 select-text"
+          style={{ userSelect: "text", WebkitUserSelect: "text" }}
         />
+        {trailing}
       </div>
     </label>
   );
