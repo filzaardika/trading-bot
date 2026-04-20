@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         web.webChromeClient = WebChromeClient()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+            WebView.setWebContentsDebuggingEnabled(true)
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
