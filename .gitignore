@@ -20,8 +20,6 @@ android/app/build/
 android/local.properties
 android/captures/
 android/.idea/
-android/gradle/wrapper/gradle-wrapper.jar
-android/gradlew
-android/gradlew.bat
+android/gradle/wrapper/gradle-wrapper.properties.bak
 *.iml
 

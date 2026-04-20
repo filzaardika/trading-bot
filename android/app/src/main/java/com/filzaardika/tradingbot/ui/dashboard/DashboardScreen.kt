@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timeline
@@ -51,13 +49,11 @@ import com.filzaardika.tradingbot.data.BotRepo
 import com.filzaardika.tradingbot.data.DashboardDto
 import com.filzaardika.tradingbot.ui.common.Card
 import com.filzaardika.tradingbot.ui.common.GradientCard
-import com.filzaardika.tradingbot.ui.common.LiveBadge
+import com.filzaardika.tradingbot.ui.common.KvRow
 import com.filzaardika.tradingbot.ui.common.MetricTile
 import com.filzaardika.tradingbot.ui.common.PnlChip
-import com.filzaardika.tradingbot.ui.common.PulsingDot
 import com.filzaardika.tradingbot.ui.common.SectionHeader
 import com.filzaardika.tradingbot.ui.common.StatusDot
-import com.filzaardika.tradingbot.ui.common.StatusPill
 import com.filzaardika.tradingbot.ui.theme.AccentAmber
 import com.filzaardika.tradingbot.ui.theme.AccentBlue
 import com.filzaardika.tradingbot.ui.theme.AccentGreen
@@ -72,9 +68,12 @@ import com.filzaardika.tradingbot.ui.theme.NumericDisplay
 import com.filzaardika.tradingbot.ui.theme.TextMuted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
-fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
+fun DashboardScreen(repo: BotRepo) {
     var dash by remember { mutableStateOf<DashboardDto?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showKillConfirm by remember { mutableStateOf(false) }
@@ -94,14 +93,9 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
             .padding(top = 8.dp, bottom = 24.dp)
     ) {
-        TopBar(dash = dash, connected = error == null)
-
-        Spacer(Modifier.height(18.dp))
-
         error?.let {
             Card {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -131,11 +125,6 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
             KillSwitchButton(active = d.kill_switch, onTap = { showKillConfirm = true })
         } else if (error == null) {
             SkeletonHero()
-        }
-
-        Spacer(Modifier.height(18.dp))
-        TextButton(onClick = onUnpair) {
-            Text("Unpair bot", color = TextMuted)
         }
     }
 
@@ -168,90 +157,55 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
 }
 
 @Composable
-private fun TopBar(dash: DashboardDto?, connected: Boolean) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(listOf(AccentGreen, AccentBlue))),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("Trading Bot", style = MaterialTheme.typography.titleMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    PulsingDot(
-                        color = if (connected) AccentGreen else AccentRed,
-                        diameter = 6.dp
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        if (connected) "LIVE • 2s" else "DISCONNECTED",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextMuted
-                    )
-                }
-            }
-        }
-        if (dash != null) LiveBadge(dash.mode, dash.testnet)
-    }
-}
-
-@Composable
 private fun HeroEquityCard(d: DashboardDto) {
     GradientCard(gradient = listOf(HeroGradTop, HeroGradMid, HeroGradBottom)) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "TOTAL EQUITY",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "$" + "%,.2f".format(d.equity),
-                style = NumericDisplay,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PnlChip(amount = d.pnl_today, pct = d.pnl_today_pct)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "today",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-            }
-            if (d.starting_equity > 0 && d.starting_equity != d.equity) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Start of day: $" + "%,.2f".format(d.starting_equity),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.55f)
-                )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "ACCOUNT EQUITY",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "$" + "%,.2f".format(d.equity),
+                        style = NumericDisplay,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    PnlChip(amount = d.pnl_today, pct = d.pnl_today_pct)
+                }
+                if (d.starting_equity > 0) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "Start",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "$" + "%,.2f".format(d.starting_equity),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }
@@ -261,9 +215,8 @@ private fun HeroEquityCard(d: DashboardDto) {
 private fun MetricsRow(d: DashboardDto) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         MetricTile(
-            label = "Positions",
+            label = "Open Positions",
             value = "${d.open_positions_count}",
-            sub = "open",
             leadingIcon = {
                 Icon(Icons.Filled.Timeline, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
             },
@@ -288,6 +241,7 @@ private fun MetricsRow(d: DashboardDto) {
 
 @Composable
 private fun CycleCard(d: DashboardDto) {
+    SectionHeader(title = "Cycle")
     Card {
         Column {
             Row(
@@ -298,10 +252,10 @@ private fun CycleCard(d: DashboardDto) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Speed, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("CYCLE PROGRESS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Next cycle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(
-                    "next in ${d.seconds_to_next_cycle}s",
+                    "${d.seconds_to_next_cycle}s",
                     style = MaterialTheme.typography.labelMedium,
                     color = TextMuted
                 )
@@ -316,13 +270,15 @@ private fun CycleCard(d: DashboardDto) {
                 color = AccentGreen,
                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
+            Spacer(Modifier.height(8.dp))
+            if (d.last_cycle_ts > 0) {
+                val timeStr = remember(d.last_cycle_ts) {
+                    SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(d.last_cycle_ts * 1000))
+                }
+                KvRow(label = "Last cycle", value = timeStr)
+            }
             if (d.last_cycle_error.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Last error: ${d.last_cycle_error}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AccentRed
-                )
+                KvRow(label = "Last error", value = d.last_cycle_error, valueColor = AccentRed)
             }
         }
     }

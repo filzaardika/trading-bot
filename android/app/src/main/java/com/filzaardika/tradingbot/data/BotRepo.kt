@@ -16,6 +16,13 @@ class BotRepo(private val ctx: Context) {
         ApiResult.Err(e.message ?: e::class.java.simpleName)
     }
 
+    suspend fun ping(host: String): ApiResult<HealthDto> = try {
+        val api = ApiFactory.create(ctx, hostOverride = host, tokenOverride = "")
+        ApiResult.Ok(api.health())
+    } catch (e: Exception) {
+        ApiResult.Err(e.message ?: "unreachable")
+    }
+
     suspend fun pair(host: String, token: String): ApiResult<PairResp> = try {
         val api = ApiFactory.create(ctx, hostOverride = host, tokenOverride = token)
         val r = api.pair(PairReq(token))

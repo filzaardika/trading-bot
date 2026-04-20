@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
@@ -48,6 +48,9 @@ import com.filzaardika.tradingbot.ui.theme.BorderStrong
 import com.filzaardika.tradingbot.ui.theme.NumericSmall
 import com.filzaardika.tradingbot.ui.theme.TextMuted
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun PositionsScreen(repo: BotRepo) {
@@ -60,36 +63,16 @@ fun PositionsScreen(repo: BotRepo) {
                 is ApiResult.Ok -> { items = r.value; error = null }
                 is ApiResult.Err -> error = r.message
             }
-            delay(2000)
+            delay(4000)
         }
     }
 
     Column(
         Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 16.dp)
+            .padding(top = 8.dp, bottom = 16.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Positions", style = MaterialTheme.typography.headlineLarge)
-            StatusPill(
-                text = "${items.size} OPEN",
-                color = if (items.isEmpty()) TextMuted else AccentBlue
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "Live view of open futures positions. Swipe on a card for actions (coming soon).",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted
-        )
-        Spacer(Modifier.height(16.dp))
-
         error?.let {
             Card { Text("Error: $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Spacer(Modifier.height(12.dp))
@@ -98,7 +81,15 @@ fun PositionsScreen(repo: BotRepo) {
         if (items.isEmpty() && error == null) {
             EmptyState()
         } else if (items.isNotEmpty()) {
-            SectionHeader(title = "Active Positions")
+            SectionHeader(
+                title = "Active Positions",
+                trailing = {
+                    StatusPill(
+                        text = "${items.size} OPEN",
+                        color = AccentBlue
+                    )
+                }
+            )
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(items, key = { it.id }) { p -> PositionCard(p) }
             }
@@ -108,14 +99,24 @@ fun PositionsScreen(repo: BotRepo) {
 
 @Composable
 private fun EmptyState() {
-    Card(padding = 28.dp) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text("📊", style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(8.dp))
-            Text("No open positions", style = MaterialTheme.typography.titleMedium)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(bottom = 80.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Filled.Inbox,
+                contentDescription = null,
+                tint = TextMuted,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("No open positions", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
-                "The bot is scanning the market. New trades will appear here in real time.",
+                "Positions will appear here when the bot opens a trade.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextMuted
             )
@@ -129,68 +130,74 @@ private fun PositionCard(p: PositionDto) {
     val sideColor = if (long) AccentGreen else AccentRed
     Card {
         Column {
-            // Header row: symbol + side chip + leverage
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(p.symbol, style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(8.dp))
                     Box(
                         Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .border(1.dp, BorderStrong, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(sideColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("${p.leverage.toInt()}x", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        Icon(
+                            imageVector = if (long) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                            contentDescription = null,
+                            tint = sideColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(p.symbol, style = MaterialTheme.typography.titleLarge)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(sideColor.copy(alpha = 0.15f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    p.side.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = sideColor
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .border(1.dp, BorderStrong, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("${p.leverage.toInt()}x", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            }
+                        }
                     }
                 }
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(sideColor.copy(alpha = 0.18f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (long) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
-                        contentDescription = null,
-                        tint = sideColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        p.side.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = sideColor
-                    )
-                }
+                PnlChip(amount = p.unrealized_pnl, pct = p.unrealized_pnl_pct)
             }
 
             Spacer(Modifier.height(12.dp))
-
-            // Price track: SL -------- Entry ---- Mark -------- TP
             PriceTrack(p)
-
             Spacer(Modifier.height(12.dp))
 
-            // Price data row
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                DataCol("Size", "%.4f".format(p.size))
                 DataCol("Entry", "%.4f".format(p.entry))
                 DataCol("Mark", "%.4f".format(p.mark))
-                DataCol("Size", "%.4f".format(p.size))
-                DataCol("SL", p.stop_loss?.let { "%.4f".format(it) } ?: "—", color = AccentRed.copy(alpha = 0.85f))
-                DataCol("TP", p.take_profit?.let { "%.4f".format(it) } ?: "—", color = AccentGreen.copy(alpha = 0.85f))
+                val openedStr = remember(p.opened_at) {
+                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(p.opened_at * 1000))
+                }
+                DataCol("Opened", openedStr)
             }
-
-            Spacer(Modifier.height(14.dp))
-            PnlChip(amount = p.unrealized_pnl, pct = p.unrealized_pnl_pct)
         }
     }
 }
@@ -200,7 +207,11 @@ private fun DataCol(label: String, value: String, color: Color = Color.Unspecifi
     Column(horizontalAlignment = Alignment.Start) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Spacer(Modifier.height(2.dp))
-        Text(value, style = NumericSmall, color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color)
+        Text(
+            value,
+            style = NumericSmall,
+            color = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color
+        )
     }
 }
 
@@ -219,12 +230,7 @@ private fun PriceTrack(p: PositionDto) {
     val fromFrac = pos(minOf(p.entry, p.mark))
     val toFrac = pos(maxOf(p.entry, p.mark))
 
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(22.dp)
-    ) {
-        // Base track
+    Box(Modifier.fillMaxWidth().height(22.dp)) {
         Box(
             Modifier
                 .fillMaxWidth()
@@ -233,7 +239,6 @@ private fun PriceTrack(p: PositionDto) {
                 .clip(RoundedCornerShape(2.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
         )
-        // Filled segment from entry to mark
         Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(fromFrac.coerceAtLeast(0.001f)))
             Box(
@@ -245,7 +250,6 @@ private fun PriceTrack(p: PositionDto) {
             )
             Spacer(Modifier.weight((1f - toFrac).coerceAtLeast(0.001f)))
         }
-        // SL marker
         if (sl != null) {
             Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(pos(sl).coerceAtLeast(0.001f)))
@@ -253,7 +257,6 @@ private fun PriceTrack(p: PositionDto) {
                 Spacer(Modifier.weight((1f - pos(sl)).coerceAtLeast(0.001f)))
             }
         }
-        // TP marker
         if (tp != null) {
             Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(pos(tp).coerceAtLeast(0.001f)))
@@ -261,13 +264,11 @@ private fun PriceTrack(p: PositionDto) {
                 Spacer(Modifier.weight((1f - pos(tp)).coerceAtLeast(0.001f)))
             }
         }
-        // Entry marker (neutral)
         Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(pos(p.entry).coerceAtLeast(0.001f)))
             Marker(TextMuted, inner = 6.dp, outer = 10.dp)
             Spacer(Modifier.weight((1f - pos(p.entry)).coerceAtLeast(0.001f)))
         }
-        // Mark marker (prominent, white)
         Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(pos(p.mark).coerceAtLeast(0.001f)))
             Marker(Color.White, inner = 8.dp, outer = 14.dp)
