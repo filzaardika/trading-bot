@@ -148,7 +148,12 @@ fun PairScreen(repo: BotRepo, onPaired: () -> Unit) {
                         onClick = {
                             error = null; busy = true
                             scope.launch {
-                                when (val r = repo.pair(host.trim(), token.trim())) {
+                                val cleanHost = host.trim()
+                                when (val p = repo.ping(cleanHost)) {
+                                    is ApiResult.Err -> { error = "Host unreachable: ${p.message}"; busy = false; return@launch }
+                                    is ApiResult.Ok -> { /* host reachable */ }
+                                }
+                                when (val r = repo.pair(cleanHost, token.trim())) {
                                     is ApiResult.Ok -> if (r.value.ok) onPaired() else error = "Pairing rejected"
                                     is ApiResult.Err -> error = r.message
                                 }

@@ -1,11 +1,7 @@
-# Android build
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-android/captures/
-android/.idea/
-android/gradle/wrapper/gradle-wrapper.jar
-android/gradlew
-android/gradlew.bat
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+.idea/
 *.iml
