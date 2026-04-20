@@ -1,5 +1,7 @@
 package com.filzaardika.tradingbot.ui.dashboard
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +11,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,18 +41,35 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.filzaardika.tradingbot.data.ApiResult
 import com.filzaardika.tradingbot.data.BotRepo
 import com.filzaardika.tradingbot.data.DashboardDto
 import com.filzaardika.tradingbot.ui.common.Card
+import com.filzaardika.tradingbot.ui.common.GradientCard
 import com.filzaardika.tradingbot.ui.common.LiveBadge
-import com.filzaardika.tradingbot.ui.common.Section
+import com.filzaardika.tradingbot.ui.common.MetricTile
+import com.filzaardika.tradingbot.ui.common.PnlChip
+import com.filzaardika.tradingbot.ui.common.PulsingDot
+import com.filzaardika.tradingbot.ui.common.SectionHeader
 import com.filzaardika.tradingbot.ui.common.StatusDot
+import com.filzaardika.tradingbot.ui.common.StatusPill
+import com.filzaardika.tradingbot.ui.theme.AccentAmber
+import com.filzaardika.tradingbot.ui.theme.AccentBlue
 import com.filzaardika.tradingbot.ui.theme.AccentGreen
 import com.filzaardika.tradingbot.ui.theme.AccentRed
+import com.filzaardika.tradingbot.ui.theme.HeroGradBottom
+import com.filzaardika.tradingbot.ui.theme.HeroGradMid
+import com.filzaardika.tradingbot.ui.theme.HeroGradTop
+import com.filzaardika.tradingbot.ui.theme.KillGradBottom
+import com.filzaardika.tradingbot.ui.theme.KillGradTop
 import com.filzaardika.tradingbot.ui.theme.LiveRed
+import com.filzaardika.tradingbot.ui.theme.NumericDisplay
+import com.filzaardika.tradingbot.ui.theme.TextMuted
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -64,105 +94,49 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 24.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Dashboard", style = MaterialTheme.typography.headlineLarge)
-            dash?.let { LiveBadge(it.mode, it.testnet) }
-        }
-        Spacer(Modifier.height(12.dp))
+        TopBar(dash = dash, connected = error == null)
+
+        Spacer(Modifier.height(18.dp))
 
         error?.let {
             Card {
-                Text("Connection error: $it", color = MaterialTheme.colorScheme.error)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(8.dp).background(AccentRed, CircleShape))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Connection error: $it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
         }
 
         val d = dash
         if (d != null) {
-            Card {
-                Column {
-                    Text("Equity", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "$" + "%,.2f".format(d.equity),
-                        style = MaterialTheme.typography.displayLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    val pnlColor = if (d.pnl_today >= 0) AccentGreen else AccentRed
-                    val sign = if (d.pnl_today >= 0) "+" else ""
-                    Text(
-                        "${sign}${"%,.2f".format(d.pnl_today)} (${sign}${"%.2f".format(d.pnl_today_pct)}%) today",
-                        color = pnlColor,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
+            HeroEquityCard(d)
+            Spacer(Modifier.height(14.dp))
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Card(Modifier.weight(1f)) {
-                    Column {
-                        Text("Open positions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${d.open_positions_count}", style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
-                Card(Modifier.weight(1f)) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusDot(d.bot_status)
-                            Spacer(Modifier.width(8.dp))
-                            Text(d.bot_status.uppercase(), style = MaterialTheme.typography.labelLarge)
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "next cycle in ${d.seconds_to_next_cycle}s",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
+            MetricsRow(d)
+            Spacer(Modifier.height(14.dp))
 
-            Card {
-                Column {
-                    Text("Cycle progress", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { d.cycle_progress.toFloat().coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-            Spacer(Modifier.height(20.dp))
+            CycleCard(d)
+            Spacer(Modifier.height(22.dp))
 
-            // KILL SWITCH — huge, thumb-reachable, double-confirm
-            Button(
-                onClick = { showKillConfirm = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = LiveRed,
-                    contentColor = MaterialTheme.colorScheme.onError
-                ),
-                modifier = Modifier.fillMaxWidth().height(64.dp)
-            ) {
-                Text(
-                    if (d.kill_switch) "KILL SWITCH ACTIVE — TAP TO RESET" else "EMERGENCY KILL SWITCH",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
+            KillSwitchButton(active = d.kill_switch, onTap = { showKillConfirm = true })
         } else if (error == null) {
-            Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SkeletonHero()
         }
 
-        Spacer(Modifier.height(24.dp))
-        TextButton(onClick = onUnpair) { Text("Unpair bot") }
+        Spacer(Modifier.height(18.dp))
+        TextButton(onClick = onUnpair) {
+            Text("Unpair bot", color = TextMuted)
+        }
     }
 
     if (showKillConfirm) {
@@ -170,6 +144,7 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
         val isActive = d?.kill_switch == true
         AlertDialog(
             onDismissRequest = { showKillConfirm = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = { Text(if (isActive) "Reset kill switch?" else "Activate KILL SWITCH?") },
             text = {
                 Text(
@@ -189,5 +164,222 @@ fun DashboardScreen(repo: BotRepo, onUnpair: () -> Unit) {
                 TextButton(onClick = { showKillConfirm = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun TopBar(dash: DashboardDto?, connected: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Brush.linearGradient(listOf(AccentGreen, AccentBlue))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text("Trading Bot", style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PulsingDot(
+                        color = if (connected) AccentGreen else AccentRed,
+                        diameter = 6.dp
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        if (connected) "LIVE • 2s" else "DISCONNECTED",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+        if (dash != null) LiveBadge(dash.mode, dash.testnet)
+    }
+}
+
+@Composable
+private fun HeroEquityCard(d: DashboardDto) {
+    GradientCard(gradient = listOf(HeroGradTop, HeroGradMid, HeroGradBottom)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "TOTAL EQUITY",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "$" + "%,.2f".format(d.equity),
+                style = NumericDisplay,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PnlChip(amount = d.pnl_today, pct = d.pnl_today_pct)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "today",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+            if (d.starting_equity > 0 && d.starting_equity != d.equity) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Start of day: $" + "%,.2f".format(d.starting_equity),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.55f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricsRow(d: DashboardDto) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        MetricTile(
+            label = "Positions",
+            value = "${d.open_positions_count}",
+            sub = "open",
+            leadingIcon = {
+                Icon(Icons.Filled.Timeline, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+            },
+            modifier = Modifier.weight(1f)
+        )
+        val statusColor = when (d.bot_status) {
+            "running" -> AccentGreen
+            "paused" -> AccentAmber
+            "error" -> AccentRed
+            else -> TextMuted
+        }
+        MetricTile(
+            label = "Bot Status",
+            value = d.bot_status.replaceFirstChar { it.uppercase() },
+            sub = if (d.kill_switch) "kill switch ON" else null,
+            valueColor = statusColor,
+            leadingIcon = { StatusDot(d.bot_status, size = 8.dp) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun CycleCard(d: DashboardDto) {
+    Card {
+        Column {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Speed, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("CYCLE PROGRESS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(
+                    "next in ${d.seconds_to_next_cycle}s",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextMuted
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { d.cycle_progress.toFloat().coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = AccentGreen,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            )
+            if (d.last_cycle_error.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Last error: ${d.last_cycle_error}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AccentRed
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KillSwitchButton(active: Boolean, onTap: () -> Unit) {
+    SectionHeader(title = "Emergency")
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(84.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (active) Brush.verticalGradient(listOf(AccentAmber, Color(0xFFB45309)))
+                else Brush.verticalGradient(listOf(KillGradTop, KillGradBottom))
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+    ) {
+        Button(
+            onClick = onTap,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = Color.White
+            ),
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(20.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        if (active) "KILL SWITCH ACTIVE" else "EMERGENCY KILL SWITCH",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        if (active) "Tap to re-enable trading" else "Tap to halt all trading",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonHero() {
+    Card(padding = 24.dp) {
+        Column {
+            Text("Loading…", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Spacer(Modifier.height(8.dp))
+            Text("— — —", style = NumericDisplay, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
